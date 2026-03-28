@@ -1,11 +1,27 @@
-import InvestmentSimulator from './InvestmentSimulator';
+import { useEffect, useState } from 'react';
+import LifestyleBalance from './LifestyleBalance';
 import AIPlan from './AIPlan';
 import Gamification from './Gamification';
-import { Activity, ShieldCheck, Home, ArrowLeft } from 'lucide-react';
+import { Activity, ShieldCheck, Home, LineChart, BrainCircuit, ArrowRight } from 'lucide-react';
 
 export default function Dashboard({ userProfile, onReset }) {
+  const [activeView, setActiveView] = useState('present');
+  const [planRequested, setPlanRequested] = useState(false);
+  const [investmentPercentage, setInvestmentPercentage] = useState(20);
+
+  useEffect(() => {
+    setActiveView('present');
+    setPlanRequested(false);
+    setInvestmentPercentage(20);
+  }, [userProfile]);
+
+  const showPlanPage = () => {
+    setPlanRequested(true);
+    setActiveView('plan');
+  };
+
   return (
-    <div className="space-y-8 animate-fade-in pb-16 pt-3 md:pt-5">
+    <div className="space-y-7 animate-fade-in pb-14 pt-3 md:pt-5">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/10 pb-8">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-3">
@@ -41,16 +57,71 @@ export default function Dashboard({ userProfile, onReset }) {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-        <div className="xl:col-span-7 h-full flex flex-col">
-          <InvestmentSimulator userProfile={userProfile} />
-        </div>
+      <section className="glass-card rounded-3xl p-3 md:p-4 border border-white/10">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div className="inline-flex bg-black/35 rounded-2xl p-1.5 border border-white/10 w-full md:w-auto">
+            <button
+              type="button"
+              onClick={() => setActiveView('present')}
+              className={`px-4 py-2.5 rounded-xl text-xs uppercase tracking-[0.14em] font-semibold transition w-full md:w-auto flex items-center justify-center gap-2 ${
+                activeView === 'present'
+                  ? 'bg-brand-accent/15 text-brand-light border border-brand-light/35'
+                  : 'text-neutral-300 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <LineChart className="w-4 h-4" />
+              Present & Future
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveView('plan')}
+              className={`px-4 py-2.5 rounded-xl text-xs uppercase tracking-[0.14em] font-semibold transition w-full md:w-auto flex items-center justify-center gap-2 ${
+                activeView === 'plan'
+                  ? 'bg-brand-accent/15 text-brand-light border border-brand-light/35'
+                  : 'text-neutral-300 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <BrainCircuit className="w-4 h-4" />
+              AI Plan
+            </button>
+          </div>
 
-        <div className="xl:col-span-5 space-y-8 flex flex-col">
-          <AIPlan userProfile={userProfile} />
-          <Gamification userProfile={userProfile} />
+          {activeView === 'present' && (
+            <button
+              type="button"
+              onClick={showPlanPage}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-teal-400 to-cyan-300 text-slate-950 text-xs uppercase tracking-[0.12em] font-bold hover:brightness-110 transition"
+            >
+              Generate AI Plan
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          )}
         </div>
-      </div>
+      </section>
+
+      {activeView === 'present' ? (
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-7">
+          <div className="xl:col-span-8 h-full flex flex-col">
+            <LifestyleBalance userProfile={userProfile} investmentPercentage={investmentPercentage} onInvestmentChange={setInvestmentPercentage} />
+          </div>
+
+          <div className="xl:col-span-4 flex flex-col">
+            <Gamification userProfile={userProfile} investmentPercentage={investmentPercentage} />
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <div className="glass-card rounded-3xl p-5 md:p-6 border border-white/10">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-neutral-400 font-semibold mb-2">Strategic Advisory Desk</p>
+            <h2 className="text-2xl md:text-3xl font-light text-white tracking-tight">AI Financial Plan</h2>
+            <p className="text-sm text-neutral-300 mt-2 max-w-3xl">
+              This view is intentionally separated from the present and future simulator to keep analysis and recommendations focused.
+            </p>
+          </div>
+
+          <AIPlan userProfile={userProfile} shouldGenerate={planRequested} />
+        </div>
+      )}
     </div>
   );
 }
