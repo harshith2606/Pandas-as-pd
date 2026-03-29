@@ -1,116 +1,136 @@
 # FutureYou
 
-FutureYou is a Gen Z-focused personal finance simulator that makes long-term planning feel interactive, visual, and actionable.
+FutureYou is a Gen Z-first personal finance app that helps users understand how today’s spending and investing decisions shape their long-term life outcomes.
 
-It includes:
+## Problem Statement
 
-- profile-based onboarding and plan editing
-- present-vs-future lifestyle simulation
-- interactive portfolio allocation builder (with persistence)
-- standalone progression metrics page with recommended/custom goals
-- standalone expense tracker with AI-based savings insights
-- simulated market recommendation cards with quick research links
+Retirement Blindness Among Gen Z
+Students often struggle to plan for retirement due to its distant and abstract nature, 
+leading them to prioritize immediate financial needs and lifestyle goals instead. Limited 
+financial literacy and awareness further contribute to this issue, making it difficult for 
+Gen Z to understand the importance of early investing and long-term financial planning. As 
+a result, retirement planning is often delayed or ignored altogether.
+
+This lack of early action can have serious long-term consequences, including insufficient 
+savings and financial insecurity in later life. The gap between awareness and action 
+highlights the need for solutions that make retirement planning more engaging, relatable, 
+and accessible, helping young individuals build consistent financial habits and ensure a 
+more secure future.
+
+## Solution Overview
+
+FutureYou provides an end-to-end flow:
+
+1. User onboarding and profile setup
+2. Present vs Future simulation with portfolio allocation controls
+3. AI-generated financial plan and trend calls
+4. AI-assisted expense analysis with savings opportunities
+5. Progression milestones with recommended and custom goals
+
+### Core Features
+
+- authentication and profile persistence via Supabase
+- portfolio builder with 4 asset buckets and local persistence
+- AI Financial Plan generation through `/api/generate-plan`
+- AI Expense Insights generation through `/api/expense-insights`
+- dedicated pages for Dashboard, Profile, Expenses, and Progression
+- beginner asset explorer with risk labels and research links
 
 ## Tech Stack
 
-- Frontend: React + Vite + Tailwind CSS + Recharts
-- Backend: Node.js + Express
-- Auth/User data: Supabase
-- AI provider (backend endpoints): Gemini API
+- Frontend: React, Vite, Tailwind CSS, Recharts
+- Local Backend: Node.js, Express
+- Deployed Backend: Vercel Serverless Functions (`/api/*`)
+- Auth + user metadata: Supabase
+- AI Provider: Google Gemini API
 
-## Current App Structure
+## Project Structure
 
-Top-level pages:
+- `src/` - frontend application code
+- `server/` - local Express API for development
+- `api/` - Vercel serverless functions for production deployment
 
-- Login
-- Onboarding
-- Dashboard
-- Plan Settings
-- Profile
-- Expenses
-- Progression
+## Setup Instructions
 
-## Key Features
+### 1. Prerequisites
 
-### 1. Portfolio + Projection Engine
+- Node.js 18+
+- npm
+- Supabase project (URL + anon key)
+- Gemini API key
 
-- investment allocation slider and future projection chart
-- portfolio bucket sliders with total cap control
-- saved bucket allocations via localStorage
+### 2. Environment Variables
 
-### 2. AI Plan View
-
-- simulated market insight generator based on current allocation mix
-- beginner-friendly recommendation explorer by category
-- one-click Google research redirect for each recommendation card
-
-### 3. Progression Metrics
-
-- dedicated page for milestone tracking
-- recommended goals (income-driven)
-- custom goals toggle and editable targets
-
-### 4. Expense Tracker
-
-- dedicated page for categorized expense logging
-- expense persistence via localStorage (`genz_expenses`)
-- AI expense analysis endpoint for savings opportunities
-
-## Environment Variables
-
-Create/update `.env` at project root.
+Create a `.env` file in the project root with:
 
 ```env
-# Backend
-FRONTEND_ORIGIN=http://localhost:5173
+# AI
 GEMINI_API_KEY=your_gemini_api_key
-GEMINI_MODEL=gemini-1.5-flash
+GEMINI_MODEL=gemini-2.5-flash
 
-# Frontend (Supabase)
+# Local backend CORS
+FRONTEND_ORIGIN=http://localhost:5173
+
+# Frontend
 VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# Local dev API base (used in DEV mode)
+VITE_API_BASE_URL=http://localhost:8787
 ```
 
-Note:
-
-- `.env` is gitignored by default.
-- if `GEMINI_API_KEY` is missing, backend AI endpoints will return an error.
-
-## Run Locally
-
-1. Install packages:
+### 3. Install Dependencies
 
 ```bash
 npm install
 ```
 
-2. Run frontend + backend together:
+### 4. Run Locally
 
 ```bash
 npm run dev:full
 ```
 
-3. Open Vite URL (typically `http://localhost:5173`).
+Then open `http://localhost:5173`.
+
+### 5. Build
+
+```bash
+npm run build
+```
+
+## Deployment Notes (Vercel)
+
+- Production frontend calls use same-origin `/api/*` routes.
+- Ensure Vercel Environment Variables are set:
+  - `GEMINI_API_KEY`
+  - `GEMINI_MODEL`
+  - `VITE_SUPABASE_URL`
+  - `VITE_SUPABASE_ANON_KEY`
+- Redeploy after changing environment variables.
+
+## API Endpoints
+
+### Serverless (Vercel)
+
+- `POST /api/generate-plan`
+- `POST /api/expense-insights`
+
+### Local Express (Development)
+
+- `GET /api/health`
+- `POST /api/generate-plan`
+- `POST /api/plan`
+- `POST /api/expense-insights`
 
 ## Available Scripts
 
 ```bash
 npm run dev        # frontend only
-npm run server     # backend only
-npm run dev:full   # frontend + backend concurrently
+npm run server     # local express backend only
+npm run dev:full   # frontend + local backend
 npm run build      # production build
-npm run preview    # preview production build
+npm run preview    # preview build
 npm run lint       # lint checks
 ```
 
-## API Endpoints (Backend)
-
-- `GET /api/health`
-- `POST /api/plan`
-- `POST /api/expense-insights`
-
-## Hackathon Context
-
-Repository: Pandas-as-pd
-
-Submission for Vashist Hackathon 3.0.
