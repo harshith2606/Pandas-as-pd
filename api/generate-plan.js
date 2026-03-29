@@ -89,7 +89,7 @@ Instructions:
         ],
         generationConfig: {
           temperature: 0.4,
-          responseMimeType: 'application/json',
+          //responseMimeType: 'application/json',
           maxOutputTokens: 900
         }
       })
