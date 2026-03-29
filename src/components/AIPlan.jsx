@@ -150,54 +150,61 @@ export default function AIPlan({ userProfile, shouldGenerate = false, allocation
         await new Promise((resolve) => setTimeout(resolve, refreshingExistingPlan ? 700 : 1100));
         if (controller.signal.aborted) return;
 
-        console.log('AIPlan: Fetching from', `${API_BASE}/api/plan`, 'with profile:', userProfile);
+        // Always pull the latest saved portfolio split before generating the plan.
+        const latestAllocations = getSavedAllocations();
+        const dominantIndex = latestAllocations.indexOf(Math.max(...latestAllocations));
+        const dominantCategory = CATEGORY_ORDER[dominantIndex] || 'index';
 
-        const response = await fetch(`${API_BASE}/api/plan`, {
+        const response = await fetch(`${API_BASE}/api/generate-plan`, {
           method: 'POST',
+          signal: controller.signal,
           headers: {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            age: Number(userProfile?.age || 22),
-            income: Number(userProfile?.income || 0),
-            expenses: Number(userProfile?.expenses || 0),
-            interests: Array.isArray(userProfile?.interests) ? userProfile.interests : [],
-            risk: userProfile?.risk || 'moderate',
-            allocations: sanitizeAllocations(allocations),
-            investmentPercentage: Number(investmentPercentage || 0)
+            portfolioData: {
+              safeAndSteady: latestAllocations[0] || 0,
+              wealthBuilding: latestAllocations[1] || 0,
+              diversifier: latestAllocations[2] || 0,
+              experimenting: latestAllocations[3] || 0
+            }
           })
         });
 
-        console.log('AIPlan: Response status:', response.status);
-
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          console.error('AIPlan: API error data:', errorData);
           throw new Error(errorData.error || `API error: ${response.status}`);
         }
 
         const responseData = await response.json();
-        console.log('AIPlan: Response data:', responseData);
-        
-        const apiPlan = responseData?.plan;
+        const planText = typeof responseData?.plan === 'string' ? responseData.plan.trim() : '';
 
-        // Transform API response to match component structure
+        if (!planText) {
+          throw new Error('AI response did not include a valid plan.');
+        }
+
+        const trendSignals = planText
+          .split(/[.!?]\s+/)
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .slice(0, 3);
+
+        // Inject the AI text into existing UI blocks while preserving current layout.
         const transformedPlan = {
-          keyInsight: apiPlan?.key_insight || 'AI plan generated.',
+          keyInsight: planText,
           dominantTitle: 'Personalized Investment Strategy',
-          trendSignals: (apiPlan?.investment_ideas || []).map(idea => idea.name),
-          dominantCategory: CATEGORY_ORDER.includes(apiPlan?.dominant_category) ? apiPlan.dominant_category : 'index',
-          projectedText: apiPlan?.life_at_60_with_investing || 'Your financial future looks bright.',
+          trendSignals: trendSignals.length > 0 ? trendSignals : ['Plan generated. Re-run for a fresh strategy angle.'],
+          dominantCategory,
+          projectedText: planText,
           budgetBreakdown: {
-            needs: apiPlan?.monthly_budget?.needs_percentage || 50,
-            wants: apiPlan?.monthly_budget?.wants_percentage || 30,
-            invest: apiPlan?.monthly_budget?.investment_percentage || 20
+            needs: 50,
+            wants: 30,
+            invest: Math.round(Number(investmentPercentage || 20))
           },
-          categoryRecommendations: apiPlan?.asset_explorer_by_category || null,
-          rawPlan: apiPlan // Store full plan for reference
+          categoryRecommendations: null,
+          rawPlan: responseData
         };
 
-        console.log('AIPlan: Transformed plan:', transformedPlan);
         setPlan(transformedPlan);
         setSelectedCategory(transformedPlan.dominantCategory);
       } catch (err) {
@@ -209,7 +216,7 @@ export default function AIPlan({ userProfile, shouldGenerate = false, allocation
         if (!plan) {
           setPlan(null);
         }
-        setError(err.message || 'Failed to generate AI plan. Check your internet connection.');
+        setError(err.message || 'Failed to generate AI plan.');
       } finally {
         setLoading(false);
         setIsRegenerating(false);
