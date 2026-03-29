@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { AreaChart, Area, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Activity, ShieldAlert, CheckCircle2, TrendingUp, AlertTriangle } from 'lucide-react';
 
-export default function LifestyleBalance({ userProfile, investmentPercentage, onInvestmentChange }) {
+export default function LifestyleBalance({ userProfile, investmentPercentage, onInvestmentChange, blendedRate = 12 }) {
 
   // Core Budgeting Logic
   const income = Number(userProfile.income) || 0;
@@ -59,7 +59,7 @@ export default function LifestyleBalance({ userProfile, investmentPercentage, on
   // Future Wealth Projection Logic (Monthly Compound Formula)
   const chartData = useMemo(() => {
     const data = [];
-    const r = 0.12 / 12; // Monthly interest rate (12% annual)
+    const r = (blendedRate / 100) / 12; // Monthly interest rate from blended portfolio
     const P = monthlyInvestment;
     
     for (let age = userProfile.age; age <= 60; age++) {
@@ -74,7 +74,7 @@ export default function LifestyleBalance({ userProfile, investmentPercentage, on
       });
     }
     return data;
-  }, [userProfile.age, monthlyInvestment]);
+  }, [userProfile.age, monthlyInvestment, blendedRate]);
 
   const wealthAt60 = chartData[chartData.length - 1]?.Wealth || 0;
 
@@ -167,7 +167,12 @@ export default function LifestyleBalance({ userProfile, investmentPercentage, on
         <div className="bg-black/30 rounded-2xl p-6 border border-white/10 flex flex-col justify-between">
           <div className="mb-6">
             <h3 className="text-[11px] uppercase font-bold text-neutral-400 tracking-[0.15em] mb-4">Future Wealth Projection (Age 60)</h3>
-            <p className="text-xs text-neutral-500 uppercase tracking-widest mb-1">Estimated Wealth at Age 60</p>
+            <p className="text-xs text-neutral-500 uppercase tracking-widest mb-1 flex items-center justify-between">
+              <span>Estimated Wealth at Age 60</span>
+              <span className="text-[9px] text-brand-light bg-brand-light/10 border border-brand-light/20 px-1.5 py-0.5 rounded ml-2">
+                @ {Number(blendedRate).toFixed(2)}% p.a.
+              </span>
+            </p>
             <p className="text-3xl lg:text-4xl font-light text-brand-light tracking-tight drop-shadow-md">
               {formatLargeNumber(wealthAt60)}
             </p>

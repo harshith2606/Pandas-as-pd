@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import LifestyleBalance from './LifestyleBalance';
 import AIPlan from './AIPlan';
 import Gamification from './Gamification';
+import PortfolioBuilder from './PortfolioBuilder';
 import { Activity, ShieldCheck, Home, LineChart, BrainCircuit, ArrowRight } from 'lucide-react';
 
 export default function Dashboard({ userProfile, onReset }) {
   const [activeView, setActiveView] = useState('present');
   const [planRequested, setPlanRequested] = useState(false);
   const [investmentPercentage, setInvestmentPercentage] = useState(20);
+  const [blendedRate, setBlendedRate] = useState(10.75);
 
   useEffect(() => {
     setActiveView('present');
@@ -100,15 +102,22 @@ export default function Dashboard({ userProfile, onReset }) {
       </section>
 
       {activeView === 'present' ? (
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-7">
-          <div className="xl:col-span-8 h-full flex flex-col">
-            <LifestyleBalance userProfile={userProfile} investmentPercentage={investmentPercentage} onInvestmentChange={setInvestmentPercentage} />
-          </div>
+        <>
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-7">
+            <div className="xl:col-span-8 h-full flex flex-col">
+              <LifestyleBalance userProfile={userProfile} investmentPercentage={investmentPercentage} onInvestmentChange={setInvestmentPercentage} blendedRate={blendedRate} />
+            </div>
 
-          <div className="xl:col-span-4 flex flex-col">
-            <Gamification userProfile={userProfile} investmentPercentage={investmentPercentage} />
+            <div className="xl:col-span-4 flex flex-col">
+              <Gamification userProfile={userProfile} investmentPercentage={investmentPercentage} blendedRate={blendedRate} />
+            </div>
           </div>
-        </div>
+          
+          <PortfolioBuilder 
+            monthlyInvestment={(Number(userProfile.income) || 0) * (investmentPercentage / 100)} 
+            onRateChange={setBlendedRate} 
+          />
+        </>
       ) : (
         <div className="space-y-6">
           <div className="glass-card rounded-3xl p-5 md:p-6 border border-white/10">

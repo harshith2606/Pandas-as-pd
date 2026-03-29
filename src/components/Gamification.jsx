@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Medal, CheckCircle, Target, ShieldCheck, Zap, Layers, Globe, Star, Activity, Hexagon, Flame, Bitcoin, Dumbbell, Video, Tv, Camera, Sparkles, Recycle, Rocket, Palette, Music2, Leaf, Brain, Podcast, Footprints, ChefHat, Wrench } from 'lucide-react';
 
-export default function Gamification({ userProfile, investmentPercentage = 20 }) {
+export default function Gamification({ userProfile, investmentPercentage = 20, blendedRate = 12 }) {
 
   const interestMap = {
     // Original 7
@@ -36,7 +36,7 @@ export default function Gamification({ userProfile, investmentPercentage = 20 })
   const income = Number(userProfile.income) || 0;
   const userExpenses = Number(userProfile.expenses) || 0;
   const monthlyInvestment = (income * investmentPercentage) / 100;
-  const r = 0.12 / 12; // 12% annual → monthly
+  const r = (blendedRate / 100) / 12; // dynamic annual -> monthly
 
   const projectedWealth = useMemo(() => {
     const calc = (years) => {
@@ -51,7 +51,7 @@ export default function Gamification({ userProfile, investmentPercentage = 20 })
       year10: calc(10),
       atAge60: calc(60 - (userProfile.age || 22)),
     };
-  }, [monthlyInvestment, userProfile.age]);
+  }, [monthlyInvestment, userProfile.age, r]);
 
   // Dynamic milestones that unlock as projected wealth grows
   const milestones = [
