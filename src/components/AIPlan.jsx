@@ -177,31 +177,45 @@ export default function AIPlan({ userProfile, shouldGenerate = false, allocation
         }
 
         const responseData = await response.json();
-        const planText = typeof responseData?.plan === 'string' ? responseData.plan.trim() : '';
+        const planText = typeof responseData?.plan === 'string'
+          ? responseData.plan.trim()
+          : '';
 
         if (!planText) {
           throw new Error('AI response did not include a valid plan.');
         }
 
-        const trendSignals = planText
+        const trendSignalsFromPlanText = planText
           .split(/[.!?]\s+/)
           .map((line) => line.trim())
           .filter(Boolean)
           .slice(0, 3);
 
+        const trendSignals = Array.isArray(responseData?.trendSignals) && responseData.trendSignals.length > 0
+          ? responseData.trendSignals
+          : trendSignalsFromPlanText;
+
+        const parsedBudget = responseData?.budgetBreakdown && typeof responseData.budgetBreakdown === 'object'
+          ? responseData.budgetBreakdown
+          : null;
+
         // Inject the AI text into existing UI blocks while preserving current layout.
         const transformedPlan = {
-          keyInsight: planText,
+          keyInsight: typeof responseData?.keyInsight === 'string' ? responseData.keyInsight : planText,
           dominantTitle: 'Personalized Investment Strategy',
           trendSignals: trendSignals.length > 0 ? trendSignals : ['Plan generated. Re-run for a fresh strategy angle.'],
-          dominantCategory,
-          projectedText: planText,
+          dominantCategory: CATEGORY_ORDER.includes(responseData?.dominantCategory)
+            ? responseData.dominantCategory
+            : dominantCategory,
+          projectedText: typeof responseData?.futureProjection === 'string' ? responseData.futureProjection : planText,
           budgetBreakdown: {
-            needs: 50,
-            wants: 30,
-            invest: Math.round(Number(investmentPercentage || 20))
+            needs: Number.isFinite(Number(parsedBudget?.needs)) ? Number(parsedBudget.needs) : 50,
+            wants: Number.isFinite(Number(parsedBudget?.wants)) ? Number(parsedBudget.wants) : 30,
+            invest: Number.isFinite(Number(parsedBudget?.invest))
+              ? Number(parsedBudget.invest)
+              : Math.round(Number(investmentPercentage || 20))
           },
-          categoryRecommendations: null,
+          categoryRecommendations: responseData?.assetExplorerByCategory || null,
           rawPlan: responseData
         };
 

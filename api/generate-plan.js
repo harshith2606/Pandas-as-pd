@@ -1,4 +1,4 @@
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent';
 
 function getPortfolioData(req) {
   if (!req?.body) return null;
@@ -33,11 +33,42 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Server misconfiguration: GEMINI_API_KEY is not set.' });
     }
 
-    const prompt = [
-      'Act as a Gen Z financial advisor.',
-      `The user has this portfolio allocation: ${JSON.stringify(portfolioData)}.`,
-      'Give them a short, 3-sentence action plan using modern Gen Z slang.'
-    ].join(' ');
+    const safeAndSteady = Math.max(0, Math.min(100, Number(portfolioData?.safeAndSteady || 0)));
+    const wealthBuilding = Math.max(0, Math.min(100, Number(portfolioData?.wealthBuilding || 0)));
+    const diversifier = Math.max(0, Math.min(100, Number(portfolioData?.diversifier || 0)));
+    const experimenting = Math.max(0, Math.min(100, Number(portfolioData?.experimenting || 0)));
+
+    const prompt = `System Role:
+You are an elite Gen Z financial advisor for India. Keep advice practical, specific, and easy to execute.
+
+User Portfolio Allocation:
+- Safe & Steady: ${safeAndSteady}%
+- Wealth Building (Index): ${wealthBuilding}%
+- Diversifier (Gold): ${diversifier}%
+- Experimenting (Equity): ${experimenting}%
+
+Instructions:
+- Generate a DETAILED but concise action plan.
+- Return ONLY valid JSON.
+- Use this exact shape:
+{
+  "plan": "string (5-7 sentences; specific and actionable)",
+  "keyInsight": "string (1-2 sentences)",
+  "futureProjection": "string (2-3 sentences)",
+  "trendSignals": ["string", "string", "string"],
+  "budgetBreakdown": {
+    "needs": number,
+    "wants": number,
+    "invest": number
+  },
+  "dominantCategory": "fd | index | gold | equity",
+  "assetExplorerByCategory": {
+    "fd": [{ "name": "string", "tickerPlatform": "string", "beginnerExplanation": "string", "riskLevel": "Low | Moderate | High" }],
+    "index": [{ "name": "string", "tickerPlatform": "string", "beginnerExplanation": "string", "riskLevel": "Low | Moderate | High" }],
+    "gold": [{ "name": "string", "tickerPlatform": "string", "beginnerExplanation": "string", "riskLevel": "Low | Moderate | High" }],
+    "equity": [{ "name": "string", "tickerPlatform": "string", "beginnerExplanation": "string", "riskLevel": "Low | Moderate | High" }]
+  }
+}`;
 
     const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
       method: 'POST',
@@ -52,8 +83,9 @@ export default async function handler(req, res) {
           }
         ],
         generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 220
+          temperature: 0.4,
+          responseMimeType: 'application/json',
+          maxOutputTokens: 900
         }
       })
     });
@@ -64,16 +96,34 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
-    const plan = data?.candidates?.[0]?.content?.parts
+    const text = data?.candidates?.[0]?.content?.parts
       ?.map((part) => part?.text || '')
       .join('')
       .trim();
 
-    if (!plan) {
+    if (!text) {
       throw new Error('Gemini API returned an empty plan.');
     }
 
-    return res.status(200).json({ plan });
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { plan: text };
+    }
+
+    const plan = typeof parsed?.plan === 'string' ? parsed.plan : text;
+
+    return res.status(200).json({
+      plan,
+      keyInsight: parsed?.keyInsight || plan,
+      futureProjection: parsed?.futureProjection || plan,
+      trendSignals: Array.isArray(parsed?.trendSignals) ? parsed.trendSignals : [],
+      budgetBreakdown: parsed?.budgetBreakdown || null,
+      dominantCategory: parsed?.dominantCategory || null,
+      assetExplorerByCategory: parsed?.assetExplorerByCategory || null
+    });
   } catch (error) {
     console.error('generate-plan error:', error);
     return res.status(500).json({ error: 'Failed to generate plan.' });

@@ -157,14 +157,58 @@ app.post('/api/generate-plan', async (req, res) => {
       });
     }
 
-    const prompt = [
-      'Act as a Gen Z financial advisor.',
-      `The user has this portfolio allocation: ${JSON.stringify(portfolioData)}.`,
-      'Give them a short, 3-sentence action plan using modern Gen Z slang.'
-    ].join(' ');
+    const safeAndSteady = Math.max(0, Math.min(100, Number(portfolioData?.safeAndSteady || 0)));
+    const wealthBuilding = Math.max(0, Math.min(100, Number(portfolioData?.wealthBuilding || 0)));
+    const diversifier = Math.max(0, Math.min(100, Number(portfolioData?.diversifier || 0)));
+    const experimenting = Math.max(0, Math.min(100, Number(portfolioData?.experimenting || 0)));
 
-    const plan = await generateGeminiText(prompt);
-    return res.json({ plan });
+    const prompt = `System Role:
+You are an elite Gen Z financial advisor for India. Keep advice practical, specific, and easy to execute.
+
+User Portfolio Allocation:
+- Safe & Steady: ${safeAndSteady}%
+- Wealth Building (Index): ${wealthBuilding}%
+- Diversifier (Gold): ${diversifier}%
+- Experimenting (Equity): ${experimenting}%
+
+Instructions:
+- Generate a DETAILED but concise action plan.
+- Return ONLY valid JSON.
+- Use this exact shape:
+{
+  "plan": "string (5-7 sentences; specific and actionable)",
+  "keyInsight": "string (1-2 sentences)",
+  "futureProjection": "string (2-3 sentences)",
+  "trendSignals": ["string", "string", "string"],
+  "budgetBreakdown": {
+    "needs": number,
+    "wants": number,
+    "invest": number
+  },
+  "dominantCategory": "fd | index | gold | equity",
+  "assetExplorerByCategory": {
+    "fd": [{ "name": "string", "tickerPlatform": "string", "beginnerExplanation": "string", "riskLevel": "Low | Moderate | High" }],
+    "index": [{ "name": "string", "tickerPlatform": "string", "beginnerExplanation": "string", "riskLevel": "Low | Moderate | High" }],
+    "gold": [{ "name": "string", "tickerPlatform": "string", "beginnerExplanation": "string", "riskLevel": "Low | Moderate | High" }],
+    "equity": [{ "name": "string", "tickerPlatform": "string", "beginnerExplanation": "string", "riskLevel": "Low | Moderate | High" }]
+  }
+}`;
+
+    const data = await generateGeminiJson(prompt);
+
+    const plan = typeof data?.plan === 'string'
+      ? data.plan
+      : (typeof data?.response === 'string' ? data.response : 'Plan generated.');
+
+    return res.json({
+      plan,
+      keyInsight: data?.keyInsight || plan,
+      futureProjection: data?.futureProjection || plan,
+      trendSignals: Array.isArray(data?.trendSignals) ? data.trendSignals : [],
+      budgetBreakdown: data?.budgetBreakdown || null,
+      dominantCategory: data?.dominantCategory || null,
+      assetExplorerByCategory: data?.assetExplorerByCategory || null
+    });
   } catch (error) {
     const upstreamMessage = error?.message || null;
 
