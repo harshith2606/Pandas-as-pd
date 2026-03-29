@@ -134,3 +134,5 @@ npm run preview    # preview build
 npm run lint       # lint checks
 ```
 
+### Note
+- The build is working properly but you might face API call issues
