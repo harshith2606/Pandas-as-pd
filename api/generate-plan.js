@@ -1,4 +1,9 @@
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+
+const buildGeminiApiUrl = (apiKey) => {
+  const encodedModel = encodeURIComponent(GEMINI_MODEL);
+  return `https://generativelanguage.googleapis.com/v1/models/${encodedModel}:generateContent?key=${apiKey}`;
+};
 
 function getPortfolioData(req) {
   if (!req?.body) return null;
@@ -70,7 +75,7 @@ Instructions:
   }
 }`;
 
-    const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+    const response = await fetch(buildGeminiApiUrl(apiKey), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -126,6 +131,10 @@ Instructions:
     });
   } catch (error) {
     console.error('generate-plan error:', error);
-    return res.status(500).json({ error: 'Failed to generate plan.' });
+    
+    // This sends the actual error string back to your frontend
+    return res.status(500).json({ 
+      error: error.message || 'Failed to generate plan.' 
+    });
   }
 }
