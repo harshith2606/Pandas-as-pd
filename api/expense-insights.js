@@ -19,6 +19,24 @@ function parseRequestBody(req) {
   return req.body;
 }
 
+function cleanText(value) {
+  if (typeof value !== 'string') return '';
+  return value.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/i, '').trim();
+}
+
+function limitSentences(value, maxSentences) {
+  const text = cleanText(value);
+  if (!text) return '';
+
+  const pieces = text
+    .split(/(?<=[.!?])\s+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  if (pieces.length <= maxSentences) return text;
+  return pieces.slice(0, maxSentences).join(' ').trim();
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -67,13 +85,14 @@ ${expenseLines}
 Instructions:
 Analyze these expenses and provide practical, realistic savings suggestions for a young investor in India.
 Do NOT suggest impossible cuts. Prioritize actions that can be implemented this month.
+Keep it concise for app UI readability.
 Output ONLY valid JSON in this exact shape:
 {
-  "overall_observation": "string",
+  "overall_observation": "string (max 2 sentences)",
   "savings_opportunities": [
     {
       "category": "string",
-      "advice": "string",
+      "advice": "string (max 2 sentences)",
       "estimated_monthly_savings_inr": number
     }
   ],
@@ -125,7 +144,31 @@ Output ONLY valid JSON in this exact shape:
       throw new Error('Could not parse Gemini response as JSON insights.');
     }
 
-    return res.status(200).json({ insights: parsedInsights });
+    const normalizedOpportunities = Array.isArray(parsedInsights?.savings_opportunities)
+      ? parsedInsights.savings_opportunities
+          .map((item) => ({
+            category: cleanText(item?.category) || 'General',
+            advice: limitSentences(item?.advice, 2),
+            estimated_monthly_savings_inr: Math.max(0, Math.round(Number(item?.estimated_monthly_savings_inr || 0)))
+          }))
+          .filter((item) => item.advice)
+          .slice(0, 3)
+      : [];
+
+    const normalizedQuickActions = Array.isArray(parsedInsights?.quick_actions)
+      ? parsedInsights.quick_actions
+          .map((item) => cleanText(String(item)))
+          .filter(Boolean)
+          .slice(0, 3)
+      : [];
+
+    return res.status(200).json({
+      insights: {
+        overall_observation: limitSentences(parsedInsights?.overall_observation, 2),
+        savings_opportunities: normalizedOpportunities,
+        quick_actions: normalizedQuickActions
+      }
+    });
   } catch (error) {
     console.error('expense-insights error:', error);
     return res.status(500).json({ error: error.message || 'Failed to generate expense insights.' });

@@ -167,6 +167,15 @@ export default function AIPlan({ userProfile, shouldGenerate = false, allocation
               wealthBuilding: latestAllocations[1] || 0,
               diversifier: latestAllocations[2] || 0,
               experimenting: latestAllocations[3] || 0
+            },
+            profileData: {
+              age: Number(userProfile?.age || 22),
+              income: Number(userProfile?.income || 0),
+              baselineExpenses: Number(userProfile?.expenses || 0),
+              risk: userProfile?.risk || 'moderate',
+              interests: Array.isArray(userProfile?.interests) ? userProfile.interests : [],
+              investmentPercentage: Number(investmentPercentage || 20),
+              requestNonce: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
             }
           })
         });
