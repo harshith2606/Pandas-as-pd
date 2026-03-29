@@ -8,6 +8,46 @@ const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
+async function generateGeminiText(prompt) {
+  const endpoint = `https://generativelanguage.googleapis.com/v1/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: prompt }]
+        }
+      ],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 220
+      }
+    })
+  });
+
+  if (!response.ok) {
+    const upstreamBody = await response.text().catch(() => '');
+    throw new Error(`Gemini HTTP ${response.status}: ${upstreamBody || 'unknown upstream error'}`);
+  }
+
+  const payload = await response.json();
+  const text = payload?.candidates?.[0]?.content?.parts
+    ?.map((part) => part?.text || '')
+    .join('')
+    .trim();
+
+  if (!text) {
+    throw new Error('Gemini returned an empty response.');
+  }
+
+  return text;
+}
+
 async function generateGeminiJson(prompt) {
   const endpoint = `https://generativelanguage.googleapis.com/v1/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
   
@@ -100,6 +140,44 @@ app.use(express.json({ limit: '1mb' }));
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'future-you-api' });
+});
+
+app.post('/api/generate-plan', async (req, res) => {
+  try {
+    if (!GEMINI_API_KEY) {
+      return res.status(500).json({
+        error: 'Missing GEMINI_API_KEY on the backend environment.'
+      });
+    }
+
+    const portfolioData = req.body?.portfolioData;
+    if (!portfolioData || typeof portfolioData !== 'object') {
+      return res.status(400).json({
+        error: 'Missing portfolioData in request body.'
+      });
+    }
+
+    const prompt = [
+      'Act as a Gen Z financial advisor.',
+      `The user has this portfolio allocation: ${JSON.stringify(portfolioData)}.`,
+      'Give them a short, 3-sentence action plan using modern Gen Z slang.'
+    ].join(' ');
+
+    const plan = await generateGeminiText(prompt);
+    return res.json({ plan });
+  } catch (error) {
+    const upstreamMessage = error?.message || null;
+
+    console.error('[/api/generate-plan] Plan generation failed:', {
+      message: upstreamMessage
+    });
+
+    return res.status(502).json({
+      error: upstreamMessage
+        ? `Gemini provider error: ${upstreamMessage}`
+        : 'Failed to generate plan from AI model.'
+    });
+  }
 });
 
 app.post('/api/plan', async (req, res) => {
