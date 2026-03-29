@@ -5,11 +5,11 @@ import cors from 'cors';
 const app = express();
 const PORT = Number(process.env.PORT) || 8787;
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-pro';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 async function generateGeminiJson(prompt) {
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+  const endpoint = `https://generativelanguage.googleapis.com/v1/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
 
   const response = await fetch(endpoint, {
     method: 'POST',
@@ -24,8 +24,7 @@ async function generateGeminiJson(prompt) {
         }
       ],
       generationConfig: {
-        temperature: 0.35,
-        responseMimeType: 'application/json'
+        temperature: 0.35
       }
     })
   });
@@ -46,13 +45,21 @@ async function generateGeminiJson(prompt) {
   }
 
   try {
+    // First try to parse the response directly as JSON
     return JSON.parse(text);
   } catch {
+    // If it's not JSON, try to extract JSON from the text
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('Gemini response did not include valid JSON.');
+    if (jsonMatch) {
+      try {
+        return JSON.parse(jsonMatch[0]);
+      } catch (jsonError) {
+        console.error('Failed to parse extracted JSON:', jsonMatch[0]);
+        throw new Error('Could not parse Gemini response as valid JSON.');
+      }
     }
-    return JSON.parse(jsonMatch[0]);
+    // If text is plain, wrap it in a simple JSON structure
+    return { response: text };
   }
 }
 
