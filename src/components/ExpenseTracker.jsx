@@ -2,9 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { ReceiptIndianRupee, Plus, Trash2, Sparkles, Loader2, Lightbulb } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
-const EXPENSES_STORAGE_KEY = 'genz_expenses';
+const LEGACY_EXPENSES_STORAGE_KEY = 'genz_expenses';
 
-export default function ExpenseTracker({ userProfile }) {
+const getExpensesStorageKey = (userId) => {
+  if (!userId) return LEGACY_EXPENSES_STORAGE_KEY;
+  return `genz_expenses:${userId}`;
+};
+
+export default function ExpenseTracker({ userProfile, userId }) {
   const [category, setCategory] = useState('');
   const [amount, setAmount] = useState('');
   const [expenses, setExpenses] = useState([]);
@@ -12,28 +17,36 @@ export default function ExpenseTracker({ userProfile }) {
   const [insightError, setInsightError] = useState('');
   const [insightData, setInsightData] = useState(null);
 
+  const storageKey = getExpensesStorageKey(userId);
+
   useEffect(() => {
-    const loadSavedExpenses = () => {
-      try {
-        const parsed = JSON.parse(localStorage.getItem(EXPENSES_STORAGE_KEY));
-        if (Array.isArray(parsed)) {
-          setExpenses(parsed);
-        } else {
-          setExpenses([]);
-        }
-      } catch {
-        setExpenses([]);
+    try {
+      const scopedRaw = localStorage.getItem(storageKey);
+      if (scopedRaw) {
+        const scopedParsed = JSON.parse(scopedRaw);
+        setExpenses(Array.isArray(scopedParsed) ? scopedParsed : []);
+        return;
       }
-    };
 
-    if (document.readyState === 'loading') {
-      window.addEventListener('DOMContentLoaded', loadSavedExpenses);
-      return () => window.removeEventListener('DOMContentLoaded', loadSavedExpenses);
+      // One-time migration path from old global key.
+      const legacyRaw = localStorage.getItem(LEGACY_EXPENSES_STORAGE_KEY);
+      if (!legacyRaw) {
+        setExpenses([]);
+        return;
+      }
+
+      const legacyParsed = JSON.parse(legacyRaw);
+      if (!Array.isArray(legacyParsed)) {
+        setExpenses([]);
+        return;
+      }
+
+      setExpenses(legacyParsed);
+      localStorage.setItem(storageKey, JSON.stringify(legacyParsed));
+    } catch {
+      setExpenses([]);
     }
-
-    loadSavedExpenses();
-    return undefined;
-  }, []);
+  }, [storageKey]);
 
   const totalTracked = useMemo(
     () => expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0),
@@ -53,7 +66,7 @@ export default function ExpenseTracker({ userProfile }) {
         }
       ];
 
-      localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(updatedExpenses));
+      localStorage.setItem(storageKey, JSON.stringify(updatedExpenses));
       return updatedExpenses;
     });
 
@@ -66,7 +79,7 @@ export default function ExpenseTracker({ userProfile }) {
   const removeExpense = (id) => {
     setExpenses((prev) => {
       const updatedExpenses = prev.filter((item) => item.id !== id);
-      localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(updatedExpenses));
+      localStorage.setItem(storageKey, JSON.stringify(updatedExpenses));
       return updatedExpenses;
     });
     setInsightData(null);

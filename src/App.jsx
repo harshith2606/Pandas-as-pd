@@ -13,6 +13,7 @@ function App() {
   const [currentScreen, setCurrentScreen] = useState('login');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
+  const [currentUserId, setCurrentUserId] = useState(null);
 
   const calculateAge = (dob) => {
     if (!dob) return 22; // fallback
@@ -30,6 +31,7 @@ function App() {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
       setIsLoggedIn(true);
+      setCurrentUserId(session.user.id || null);
       const metadata = session.user.user_metadata;
       if (metadata?.profile_data) {
         const reconstitutedProfile = { 
@@ -41,6 +43,7 @@ function App() {
         return { hasProfile: true, profile: reconstitutedProfile };
       }
     }
+    setCurrentUserId(null);
     return { hasProfile: false, profile: null };
   }, []);
 
@@ -70,6 +73,7 @@ function App() {
         } else {
           setIsLoggedIn(false);
           setUserProfile(null);
+          setCurrentUserId(null);
         }
       }
     };
@@ -144,6 +148,7 @@ function App() {
   const handleSignOut = () => {
     setIsLoggedIn(false);
     setUserProfile(null);
+    setCurrentUserId(null);
     setCurrentScreen('login');
     window.history.pushState({ screen: 'login' }, '', '/');
   };
@@ -185,7 +190,7 @@ function App() {
               onCancel={handlePlanCancel}
             />
           )}
-          {currentScreen === 'expenses' && <ExpenseTracker userProfile={userProfile} />}
+          {currentScreen === 'expenses' && <ExpenseTracker userProfile={userProfile} userId={currentUserId} />}
           {currentScreen === 'progression' && <ProgressionMetricsPage userProfile={userProfile} />}
         </div>
         
