@@ -1,4 +1,4 @@
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
 const buildGeminiApiUrl = (apiKey) => {
   const encodedModel = encodeURIComponent(GEMINI_MODEL);
